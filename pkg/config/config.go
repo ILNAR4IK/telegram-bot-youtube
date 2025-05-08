@@ -2,7 +2,6 @@ package config
 
 import (
 	"github.com/spf13/viper"
-	"os"
 )
 
 type Messages struct { // Структура сообщений
@@ -67,15 +66,7 @@ func unmarshal(cfg *Config) error { //
 	return nil
 }
 
-//TOKEN=7677898491:AAF9oEy831OpShl61sYZw0nT_s2e6ZRb5NA
-//CONSUMER_KEY=114575-2848d9b18c1bad00c4283da
-//AUTH_SERVER_URL=http://localhost/
-
 func fromEnv(cfg *Config) error {
-	os.Setenv("TOKEN", "7677898491:AAF9oEy831OpShl61sYZw0nT_s2e6ZRb5NA")
-	os.Setenv("CONSUMER_KEY", "114575-2848d9b18c1bad00c4283da")
-	os.Setenv("AUTH_SERVER_URL", "http://localhost/")
-
 	if err := viper.BindEnv("token"); err != nil {
 		return err
 	} // 1. Сначала привязываем переменную окружения к Viper

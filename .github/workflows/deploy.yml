@@ -1,0 +1,37 @@
+name: Deploy to VPS (Docker Run)
+
+on:
+  push:
+    branches:
+      - main  # Теперь используем main вместо master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Copy files to VPS
+        run: |
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/id_rsa" \
+            ./ root@${{ secrets.VPS_HOST }}:/root/app/
+
+      - name: Rebuild & Run Docker
+        run: |
+          ssh -i ~/.ssh/id_rsa root@${{ secrets.VPS_HOST }} << 'EOF'
+            cd /root/app
+            docker stop pocketer-bot || true
+            docker rm pocketer-bot || true
+            docker build -t pocketer-bot .
+            docker run -d --name pocketer-bot --restart always pocketer-bot
+          EOF
