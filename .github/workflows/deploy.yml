@@ -1,36 +1,41 @@
-name: Deploy to VPS (Docker Run)
+name: Deploy to VPS
 
 on:
   push:
     branches:
-      - main  # Ветка main
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up SSH
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y sshpass  # Установка sshpass
+      - name: Install sshpass
+        run: sudo apt-get install -y sshpass
 
       - name: Copy files to VPS
         run: |
           sshpass -p "${{ secrets.VPS_PASSWORD }}" rsync -avz --delete \
-            -e "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" \
-            ./ root@${{ secrets.VPS_HOST }}:/root/app/
+            -e "ssh -o StrictHostKeyChecking=no" ./ \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/root/app
 
-      - name: Rebuild & Run Docker
+      - name: Deploy on VPS
         run: |
-          sshpass -p "${{ secrets.VPS_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            root@${{ secrets.VPS_HOST }} << 'EOF'
+          sshpass -p "${{ secrets.VPS_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
             cd /root/app
-            docker stop pocketer-bot || true
-            docker rm pocketer-bot || true
-            docker build -t pocketer-bot .
-            docker run -d --name pocketer-bot --restart always pocketer-bot
+
+            # Остановим старый контейнер, если он был
+            docker stop app || true && docker rm app || true
+
+            # Соберем и запустим новый контейнер
+            docker build -t my-app .
+
+            docker run -d --name app \
+              -e TOKEN=${{ secrets.TOKEN }} \
+              -e CONSUMER_KEY=${{ secrets.CONSUMER_KEY }} \
+              -e AUTH_SERVER_URL=${{ secrets.AUTH_SERVER_URL }} \
+              -p 80:80 my-app
           EOF
