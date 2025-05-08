@@ -3,7 +3,7 @@ name: Deploy to VPS (Docker Run)
 on:
   push:
     branches:
-      - main  # Теперь используем main вместо master
+      - main  # Ветка main
 
 jobs:
   deploy:
@@ -15,20 +15,19 @@ jobs:
 
       - name: Set up SSH
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.VPS_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+          sudo apt-get update
+          sudo apt-get install -y sshpass  # Установка sshpass
 
       - name: Copy files to VPS
         run: |
-          rsync -avz --delete \
-            -e "ssh -i ~/.ssh/id_rsa" \
+          sshpass -p "${{ secrets.VPS_PASSWORD }}" rsync -avz --delete \
+            -e "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" \
             ./ root@${{ secrets.VPS_HOST }}:/root/app/
 
       - name: Rebuild & Run Docker
         run: |
-          ssh -i ~/.ssh/id_rsa root@${{ secrets.VPS_HOST }} << 'EOF'
+          sshpass -p "${{ secrets.VPS_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            root@${{ secrets.VPS_HOST }} << 'EOF'
             cd /root/app
             docker stop pocketer-bot || true
             docker rm pocketer-bot || true
